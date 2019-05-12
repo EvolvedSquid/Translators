@@ -1,18 +1,3 @@
-"""
-English to French and German using Seq2Seq.  Now with reversed input sequences.
-
-Surprisingly, the LSTM did not suffer on very long sentences, despite the recent experience of other
-researchers with related architectures [26]. We were able to do well on long sentences because we
-reversed the order of words in the source sentence but not the target sentences in the training and test
-set. By doing so, we introduced many short term dependencies that made the optimization problem
-much simpler (see sec. 2 and 3.3). As a result, SGD could learn LSTMs that had no trouble with
-long sentences. The simple trick of reversing the words in the source sentence is one of the key
-technical contributions of this work
-
-See 3.3
-
-"""
-
 from __future__ import print_function
 
 from keras.models import Model, load_model
@@ -86,16 +71,12 @@ def on_epoch_end(epoch, _):
         print('-')
         print('Input sentence:', ENG2fra[seq_index])
         print('Decoded sentence:', decoded_sentence)
-    # if epoch % 10 == 0 and save_model:
-    #     eng2fra_model.save('Saves/eng2fra-%sx%s/model_%s.hdf5' % (num_samples, latent_dim, epoch))
 
 def clean(text):
     return text.lower().replace('"', ' " ').replace('”', ' ” ').replace('“', ' “ ').replace(',', ' , ').replace('.', ' . ').replace('?', ' ? ').replace('!', ' ! ').replace('--', ' -- ').replace('- ', ' - ').replace(';', ' ; ').replace(':', ' : ').replace('=', ' = ').replace('(', ' ( ').replace(')', ' ) ').replace('[', ' [ ').replace(']', ' ] ').replace('{', ' { ').replace('}', ' } ')
 
 def load(filepath):
     model = load_model(filepath)
-    # encoder = load_model(load_from_encoder)
-    # decoder = load_model(load_from_decoder)
 
     encoder_input = model.input[0]   # input_1
     encoder_output, state_h, state_c = model.layers[2].output   # lstm_1
@@ -120,9 +101,6 @@ def load(filepath):
     return model, encoder, decoder
 
 def recover(eng2fra_file, eng2deu_file):
-    # french_model, encoder, french_decoder = load(eng2fra_file)
-    # german_model, encoder, german_decoder = load(eng2deu_file)
-
     # Load French file
     model = load_model(eng2fra_file)
 
@@ -195,16 +173,6 @@ def recover(eng2fra_file, eng2deu_file):
     german_model = Model([encoder_input, decoder_input], decoder_outputs)
 
     return french_model, german_model, encoder, french_decoder, german_decoder
-    # encoder = load_model(encoder_file)
-
-    # f_decoder = load_model(f_decoder_file)
-    # g_decoder = load_model(g_decoder_file)
-
-    # eng2fra_model = Model(encoder.inputs[0], f_decoder.outputs[0])
-    # eng2deu_model = Model(encoder.inputs[0], g_decoder.outputs[0])
-
-
-    # return eng2fra_model, eng2deu_model, encoder, f_decoder, g_decoder
 
 batch_size = None  # Batch size for training.
 epochs = 200  # Number of epochs to train for.
@@ -235,9 +203,9 @@ for line in lines[: min(num_samples, len(lines) - 1)]:
     input_text, target_text = clean(input_text).split(), clean(target_text).split()
     target_text = ['\t'] + target_text + ['\n']
     ENG2fra.append(input_text)
-    ENG2fra.append(input_text[::-1]) # Reversed Sequence (3.3)
+    ENG2fra.append(input_text[::-1]) # Reversed Sequence
     eng2FRA.append(target_text)
-    eng2FRA.append(target_text) # Un-reversed target (3.3)
+    eng2FRA.append(target_text) # Un-reversed target
     for word in input_text:
         if word not in english_vocab:
             english_vocab.add(word)
@@ -253,9 +221,9 @@ for line in lines[: min(num_samples, len(lines) - 1)]:
     input_text, target_text = clean(input_text).split(), clean(target_text).split()
     target_text = ['\t'] + target_text + ['\n']
     ENG2deu.append(input_text)
-    ENG2deu.append(input_text[::-1]) # Reversed Sequence (3.3)
+    ENG2deu.append(input_text[::-1]) # Reversed Sequence
     eng2DEU.append(target_text)
-    eng2DEU.append(target_text) # Un-reversed target (3.3)
+    eng2DEU.append(target_text) # Un-reversed target
     for word in input_text:
         if word not in english_vocab:
             english_vocab.add(word)
@@ -426,8 +394,6 @@ callback = LambdaCallback(on_epoch_end=on_epoch_end)
 
 for epoch in range(epochs):
     print('Epoch %s/%s' % (epoch+1, epochs))
-    # eng2fra_model.train_on_batch([english2fra_input_data, french_input_data], french_target_data) # Doesn't work idk y
-    # eng2deu_model.train_on_batch([english2deu_input_data, german_input_data], german_target_data)
     eng2fra_model.fit([english2fra_input_data, french_input_data], french_target_data,
           batch_size=batch_size,
           epochs=1,
@@ -448,23 +414,15 @@ for epoch in range(epochs):
         print('German - Loss: %s, Acc: %s ' % tuple(eng2deu_model.test_on_batch([english2deu_input_data, german_input_data], german_target_data)))
         print('-')
 
-    # print([layer.get_weights() for layer in eng2fra_model.layers])
-    # print([layer.get_weights() for layer in eng2deu_model.layers])
 
     if epoch % 10 == 0 and save_model:
         eng2fra_model.save('Saves/eng2fra&deu_reversed-%sx%s/eng2fra_%s' % (num_samples, latent_dim, epoch))
         eng2deu_model.save('Saves/eng2fra&deu_reversed-%sx%s/eng2deu_%s' % (num_samples, latent_dim, epoch))
-        # encoder_model.save('Saves/eng2fra&deu-%sx%s/encoder_%s' % (num_samples, latent_dim, epoch))
-        # f_decoder_model.save('Saves/eng2fra&deu-%sx%s/f_decoder_%s' % (num_samples, latent_dim, epoch))
-        # g_decoder_model.save('Saves/eng2fra&deu-%sx%s/g_decoder_%s' % (num_samples, latent_dim, epoch))
 
 # Save model
 if save_model:
     eng2fra_model.save('Saves/eng2fra&deu_reversed-%sx%s/eng2fra_%s' % (num_samples, latent_dim, epochs))
     eng2deu_model.save('Saves/eng2fra&deu_reversed-%sx%s/eng2deu_%s' % (num_samples, latent_dim, epochs))
-    # encoder_model.save('Saves/eng2fra&deu-%sx%s/encoder_%s' % (num_samples, latent_dim, epoch))
-    # f_decoder_model.save('Saves/eng2fra&deu-%sx%s/f_decoder_%s' % (num_samples, latent_dim, epoch))
-    # g_decoder_model.save('Saves/eng2fra&deu-%sx%s/g_decoder_%s' % (num_samples, latent_dim, epoch))
 
 # eng2fra_model, eng2deu_model, encoder, f_decoder_model, g_decoder_model = recover('Saves/eng2fra&deu-500x256/eng2fra_12', 'Saves/eng2fra&deu-500x256/eng2deu_12')
 
